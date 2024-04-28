@@ -102,13 +102,13 @@ queue BFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
 stack stack_init();
 
 stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Window *window,
-          int r, int startKey, int *flag, int *place, FILE *fptr, matrix *treeMatrix, array *array, stack stack);
+          int r, int startKey, int *place, FILE *fptr, matrix *treeMatrix, array *array, stack stack);
 
 int main(int argc, char *argv[]) {
     srand(seed);
 
     FILE *fptr, *fptr2;
-    int r1, r2, flag = 0, BFSflag = 1, BFSstartKey, DFSstartKey, isCurrent = -1, finished, DFSflag = 1, place = 0;
+    int r1, r2, flag = 0, BFSflag = 1, BFSstartKey, DFSstartKey, isCurrent = -1, finished, place = 0;
     char ch1[] = "|", ch2[] = "V";
     queue queue1 = q_init();
     stack stack1 = stack_init();
@@ -158,9 +158,6 @@ int main(int argc, char *argv[]) {
     while (!quit) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
-                case SDL_QUIT:
-                    quit = 1;
-                    break;
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
                         list1_ptr = reDraw(directedRendererBFS, directedWindowBFS,
@@ -171,21 +168,25 @@ int main(int argc, char *argv[]) {
                         for (int i = 0; i < N; ++i) {
                             queue1.queue[i] = -1;
                             stack1.stack[i] = -1;
+                            array1.array[i] = 0;
                         }
                         queue1.rear = -1;
                         queue1.front = 0;
                         stack1.top = 0;
                         BFSflag = 1;
+                        array1.place = 0;
                         break;
                     } else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
                         quit = 1;
                         break;
                     }
                 case SDL_KEYDOWN:
-                    KEYS[event.key.keysym.sym] = true;
+                    if (event.key.keysym.sym < 322)
+                        KEYS[event.key.keysym.sym] = true;
                     break;
                 case SDL_KEYUP:
-                    KEYS[event.key.keysym.sym] = false;
+                    if (event.key.keysym.sym < 322)
+                        KEYS[event.key.keysym.sym] = false;
                     break;
             }
         }
@@ -252,8 +253,8 @@ int main(int argc, char *argv[]) {
 
         if (KEYS[SDLK_m]) {
             stack1 = DFS(directedMatrix, list2_ptr, directedRendererDFS,
-                         directedWindowDFS, r2, DFSstartKey, &DFSflag, &place,
-                         fptr,&treeMatrixDFS, &array1, stack1);
+                         directedWindowDFS, r2, DFSstartKey, &place,
+                         fptr, &treeMatrixDFS, &array1, stack1);
             KEYS[SDLK_m] = false;
 
             if (stack1.top == END_CODE) {
@@ -268,7 +269,7 @@ int main(int argc, char *argv[]) {
                         stack1.top = 0;
                         break;
                     } else if (DFSstartKey == 1) {
-                        if (DFSflag) {
+                        if (array1.place == N) {
                             fptr2 = fopen("Output2.txt", "a");
                             fprintf(fptr2, "\n");
                             for (int i = 0; i < N; ++i)
@@ -289,13 +290,30 @@ int main(int argc, char *argv[]) {
                             }
                             fprintf(fptr2, "\n");
                             fclose(fptr2);
-                            DFSflag = 0;
+                            array1.place = 0;
                         }
                     }
                     DFSstartKey--;
                 }
             }
+        }
 
+        if (KEYS[SDLK_r]) {
+            list1_ptr = reDraw(directedRendererBFS, directedWindowBFS,
+                               directedMatrix, list1_ptr, &r1);
+            list2_ptr = reDraw(directedRendererDFS, directedWindowDFS,
+                               directedMatrix, list2_ptr, &r2);
+
+            for (int i = 0; i < N; ++i) {
+                queue1.queue[i] = -1;
+                stack1.stack[i] = -1;
+                array1.array[i] = 0;
+            }
+            queue1.rear = -1;
+            queue1.front = 0;
+            stack1.top = 0;
+            BFSflag = 1;
+            array1.place = 0;
         }
 
     }
@@ -738,16 +756,16 @@ void drawDirConnections(SDL_Renderer *renderer, l_list *node1, l_list *node2,
 l_list *reDraw(SDL_Renderer *renderer, SDL_Window *window, matrix graphMatrix, l_list *list_ptr, int *r) {
     clearScreen(renderer);
     list_ptr = drawGraph(renderer, window,
-                          graphMatrix, list_ptr, N, r);
+                         graphMatrix, list_ptr, N, r);
     SDL_RenderPresent(renderer);
     return list_ptr;
 }
 
 queue q_init() {
     queue q = {
-        .queue = {-1},
-        .rear = -1,
-        .front = 0,
+            .queue = {-1},
+            .rear = -1,
+            .front = 0,
     };
     for (int i = 1; i < N; ++i)
         q.queue[i] = -1;
@@ -892,7 +910,7 @@ stack stack_init() {
 }
 
 stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Window *window,
-          int r, int startKey, int *flag, int *place, FILE *fptr, matrix *treeMatrix, array *array, stack stack) {
+          int r, int startKey, int *place, FILE *fptr, matrix *treeMatrix, array *array, stack stack) {
 
     if (stack.top == END_CODE) {
         fclose(fptr);
@@ -913,7 +931,6 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
     if (stack.top == 0) {
         stack.stack[stack.top++] = startKey;
         stack.prevVertex = startKey;
-        *flag = 0;
     }
 
     while (stack.top > 0) {
@@ -923,7 +940,7 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
         if (this_node->state == 0) {
             this_node->state = 1;
 
-            if (this_node->key != startKey){
+            if (this_node->key != startKey) {
                 SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
                 drawCircle(renderer, prev_node->x, prev_node->y, r);
                 drawVertexNumber(renderer, prev_node->key, prev_node->x, prev_node->y, gap, color);
@@ -943,8 +960,7 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
                 if (graphMatrix.matrix[this_node->key - 1][i] && new_node->state == 0) {
                     stack.stack[stack.top++] = i + 1;
                     stack.prevVertex = stack.stack[stack.top - 1];
-                } else if (graphMatrix.matrix[this_node->key - 1][i])
-                    *flag = 1;
+                }
             }
 
             fprintf(fptr, "%4d", this_node->key);
@@ -954,18 +970,18 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
             stack.prevVertex = this_node->key;
             return stack;
         } else {
-            if (array->place == N)
+            if (array->place == N && stack.top == END_CODE)
                 this_node = find_num(list_ptr, array->array[array->place - 1]);
 
             SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
             drawCircle(renderer, this_node->x, this_node->y, r);
             drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
             SDL_RenderPresent(renderer);
-
         }
     }
 
     fclose(fptr);
     stack.top = END_CODE;
     return stack;
+
 }
