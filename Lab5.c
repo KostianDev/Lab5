@@ -322,6 +322,14 @@ int main(int argc, char *argv[]) {
             stack1.top = 0;
             BFSflag = 1;
             array1.place = 0;
+            BFSstartKey = startKey_init(directedMatrix);
+            DFSstartKey = BFSstartKey;
+            fptr = fopen("Output.txt", "w");
+            printMatrix(directedMatrix, fptr, "directed graph");
+            fclose(fptr);
+            fptr2 = fopen("Output2.txt", "w");
+            printMatrix(directedMatrix, fptr2, "directed graph");
+            fclose(fptr2);
         }
 
     }
