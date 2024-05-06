@@ -34,7 +34,6 @@ typedef struct q {
 typedef struct stack {
     int stack[N * N];
     int top;
-    int prevVertex;
 } stack;
 
 typedef struct newOrder {
@@ -108,7 +107,7 @@ int main(int argc, char *argv[]) {
     srand(seed);
 
     FILE *fptr, *fptr2;
-    int r1, r2, flag = 0, BFSflag = 1, BFSstartKey, DFSstartKey, isCurrent = -1, finished, place = 0;
+    int r1, r2, flag = 0, BFSflag = 1, BFSstartKey, DFSstartKey, isCurrent = -1, finished, place = 1;
     char ch1[] = "|", ch2[] = "V";
     queue queue1 = q_init();
     stack stack1 = stack_init();
@@ -901,7 +900,6 @@ stack stack_init() {
     stack stack = {
             .stack = {-1},
             .top = 0,
-            .prevVertex = -1,
     };
 
     for (int i = 1; i < N * N; ++i)
@@ -928,14 +926,13 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
     SDL_Color color1 = {255, 0, 0, 255};
     SDL_Color color2 = {0, 0, 255, 255};
 
-    if (stack.top == 0) {
+    if (stack.top == 0)
         stack.stack[stack.top++] = startKey;
-        stack.prevVertex = startKey;
-    }
 
     while (stack.top > 0) {
-        this_node = find_num(list_ptr, stack.stack[--stack.top]);
-        prev_node = find_num(list_ptr, stack.prevVertex);
+        this_node = find_num(list_ptr, stack.stack[--stack.top] % 1000);
+        if (this_node->key != startKey)
+            prev_node = find_num(list_ptr, (int) (stack.stack[stack.top] / 1000));
 
         if (this_node->state == 0) {
             this_node->state = 1;
@@ -955,28 +952,47 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
             drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
             SDL_RenderPresent(renderer);
 
-            for (int i = 0; i < N; i++) {
+            for (int i = N - 1; i >= 0; i--) {
                 new_node = find_num(list_ptr, i + 1);
                 if (graphMatrix.matrix[this_node->key - 1][i] && new_node->state == 0) {
-                    stack.stack[stack.top++] = i + 1;
-                    stack.prevVertex = stack.stack[stack.top - 1];
+                    stack.stack[stack.top++] = this_node->key * 1000 + (i + 1);
                 }
             }
 
             fprintf(fptr, "%4d", this_node->key);
-            array->array[array->place++] = this_node->key;
-            *place = array->place - 1;
             fclose(fptr);
-            stack.prevVertex = this_node->key;
             return stack;
         } else {
-            if (array->place == N && stack.top == END_CODE)
-                this_node = find_num(list_ptr, array->array[array->place - 1]);
+
+            if (this_node->key != startKey) {
+                prev_node = find_num(list_ptr, (int) (stack.stack[stack.top + 1] % 1000));
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                drawCircle(renderer, prev_node->x, prev_node->y, r);
+                drawVertexNumber(renderer, prev_node->key, prev_node->x, prev_node->y, gap, color);
+                SDL_RenderPresent(renderer);
+            }
+
+            if (*place && this_node->key != startKey && stack.top != 0 && this_node->key != array->place) {
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                drawCircle(renderer, this_node->x, this_node->y, r);
+                drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
+                SDL_RenderPresent(renderer);
+                *place *= -1;
+                fclose(fptr);
+                array->place = this_node->key;
+                if (this_node->key != prev_node->key)
+                    return stack;
+            }
 
             SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
             drawCircle(renderer, this_node->x, this_node->y, r);
             drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
             SDL_RenderPresent(renderer);
+
+            if (stack.top != 0) {
+                fclose(fptr);
+                return stack;
+            }
         }
     }
 
