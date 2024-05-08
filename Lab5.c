@@ -1016,5 +1016,4 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
     fclose(fptr);
     stack.top = END_CODE;
     return stack;
-
 }
