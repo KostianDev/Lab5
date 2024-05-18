@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
                         }
                         queue1.rear = -1;
                         queue1.front = 0;
-                        stack1.top = 0;
+                        stack1.top = -2;
                         BFSflag = 1;
                         array1.place = 0;
                         BFSstartKey = startKey_init(directedMatrix);
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
 
                         for (int i = 0; i < N; ++i)
                             stack1.stack[i] = -1;
-                        stack1.top = 0;
+                        stack1.top = -2;
                         break;
                     } else if (startKey2 == 1) {
                         if (array1.place == N) {
@@ -457,6 +457,7 @@ void printMatrix(matrix passMatrix, FILE *fptr, const char graphName[]) {
         fprintf(fptr, "\n");
     }
     fprintf(fptr, "\n");\
+
 }
 
 void clearScreen(SDL_Renderer *Renderer) {
@@ -893,7 +894,7 @@ queue BFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
                 new_node->state = 1;
                 drawCircle(renderer, new_node->x, new_node->y, r);
                 drawVertexNumber(renderer, new_node->key, new_node->x, new_node->y, gap, color);
-                drawDirConnections(renderer, this_node, new_node, r,1,
+                drawDirConnections(renderer, this_node, new_node, r, 1,
                                    width, height, N, color);
                 treeMatrix->matrix[this_node->key - 1][new_node->key - 1] = 1;
                 SDL_RenderPresent(renderer);
@@ -916,7 +917,7 @@ queue BFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
 stack stack_init() {
     stack stack = {
             .stack = {-1},
-            .top = 0,
+            .top = -2,
             .prevVertex = -1,
     };
 
@@ -933,7 +934,7 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
         return stack;
     }
 
-    int width, height;
+    int width, height, neighboursFound = 0;
     l_list *this_node = find_num(list_ptr, startKey), *new_node, *prev_node;
     int gap = r * sizeMult;
 
@@ -944,74 +945,90 @@ stack DFS(matrix graphMatrix, l_list *list_ptr, SDL_Renderer *renderer, SDL_Wind
     SDL_Color color1 = {255, 0, 0, 255};
     SDL_Color color2 = {0, 0, 255, 255};
 
-    if (stack.top == 0) {
-        stack.stack[stack.top++] = startKey;
+    if (stack.top == -2) {
+        ++stack.top;
+        stack.stack[++stack.top] = startKey;
         stack.prevVertex = startKey;
+
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         drawCircle(renderer, this_node->x, this_node->y, r);
         drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
         SDL_RenderPresent(renderer);
+        this_node->state = 1;
+
+        fprintf(fptr, "%4d", this_node->key);
+        array->array[array->place++] = this_node->key;
         fclose(fptr);
         return stack;
     }
 
-    while (stack.top > 0) {
-        this_node = find_num(list_ptr, stack.stack[--stack.top]);
-        prev_node = find_num(list_ptr, stack.prevVertex);
+    prev_node = find_num(list_ptr, stack.stack[stack.top + 1]);
+    if (prev_node != NULL) {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        drawCircle(renderer, prev_node->x, prev_node->y, r);
+        drawVertexNumber(renderer, prev_node->key, prev_node->x, prev_node->y, gap, color);
+        SDL_RenderPresent(renderer);
+    }
 
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    while (stack.top >= 0) {
+        this_node = find_num(list_ptr, stack.stack[stack.top]);
+
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
         drawCircle(renderer, this_node->x, this_node->y, r);
-        drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
+        drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
         SDL_RenderPresent(renderer);
 
-        if (this_node->state == 0) {
-            if (*place == 1) {
-                *place *= -1;
-                stack.top++;
-                fclose(fptr);
-                return stack;
+        for (int i = 0; i < N; i++) {
+            new_node = find_num(list_ptr, i + 1);
+            if (graphMatrix.matrix[this_node->key - 1][i] && new_node->state == 0 && this_node->key - 1 != i) {
+                stack.stack[++stack.top] = i + 1;
+                stack.prevVertex = this_node->key;
+                this_node = new_node;
+                this_node->state = 1;
+                neighboursFound = 1;
+                break;
             }
-
-            this_node->state = 1;
-
-            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-            drawCircle(renderer, this_node->x, this_node->y, r);
-            drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
-            SDL_RenderPresent(renderer);
-
-            if (this_node->key != startKey) {
-                drawDirConnections(renderer, prev_node, this_node, r,
-                                   (this_node->key > prev_node->key) ? 1 : -1,
-                                   width, height, N, color);
-                treeMatrix->matrix[prev_node->key - 1][this_node->key - 1] = 1;
-                SDL_RenderPresent(renderer);
-            }
-
-            for (int i = 0; i < N; i++) {
-                new_node = find_num(list_ptr, i + 1);
-                if (graphMatrix.matrix[this_node->key - 1][i] && new_node->state == 0) {
-                    stack.stack[stack.top++] = i + 1;
-                    stack.prevVertex = stack.stack[stack.top - 1];
-                }
-            }
+        }
+        if (neighboursFound) {
+            prev_node = find_num(list_ptr, stack.prevVertex);
 
             fprintf(fptr, "%4d", this_node->key);
             array->array[array->place++] = this_node->key;
             fclose(fptr);
-            stack.prevVertex = this_node->key;
-            *place *= -1;
-            return stack;
-        } else {
-            if (array->place == N && stack.top == END_CODE)
-                this_node = find_num(list_ptr, array->array[array->place - 1]);
+
+            treeMatrix->matrix[prev_node->key - 1][this_node->key - 1] = 1;
 
             SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+            drawDirConnections(renderer, prev_node, this_node, r,
+                               1, width, height, N, color);
+
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
             drawCircle(renderer, this_node->x, this_node->y, r);
-            drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
+            drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
             SDL_RenderPresent(renderer);
-            *place = 0;
+            return stack;
+        } else {
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+            drawCircle(renderer, this_node->x, this_node->y, r);
+            drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color1);
+            SDL_RenderPresent(renderer);
+
+            stack.top--;
+            fclose(fptr);
+            if (this_node->key != array->array[array->place - 1]) return stack;
+            else {
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+                drawCircle(renderer, this_node->x, this_node->y, r);
+                drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
+                SDL_RenderPresent(renderer);
+            }
         }
     }
+
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    drawCircle(renderer, this_node->x, this_node->y, r);
+    drawVertexNumber(renderer, this_node->key, this_node->x, this_node->y, gap, color);
+    SDL_RenderPresent(renderer);
 
     fclose(fptr);
     stack.top = END_CODE;
